@@ -222,6 +222,14 @@
 
         const morphs = gui.addFolder('Morphs');
 
+        const nonMorph = [
+          'iris_rotation_x',
+          'iris_rotation_y',
+          'head_x',
+          'head_y',
+          'head_z',
+        ];
+
         function initControls() {
           for (const key in standardlist) {
             controls[key] = 0.0;
@@ -237,21 +245,92 @@
         function initMorphs() {
           //此程式只有eye_happy_wink_left能控制
           let i = 0;
+
+          let previousKey = '',
+            previousMorph;
+
+          const modelKey = Object.keys(dataJson['modellist'][modelFileNum]);
+
           for (const key in standardlist) {
-            if (i != 14) {
-              morphs.add(controls, key, 0.0, 0.0, 0.01).onChange(onChangeMorph);
+            const morphKey = dataJson['modellist'][modelFileNum][key];
+            if (morphKey === -1) {
+              morphs.add(controls, key, 1.0, 1.0, 0.01).onChange(onChangeMorph);
             } else {
-              morphs.add(controls, key, 0.0, 1.0, 0.01).onChange(onChangeMorph);
+              if (
+                key.search('right') &&
+                previousMorph === morphKey &&
+                modelKey.find(v => v === key)
+              ) {
+                morphs
+                  .add(controls, key, 1.0, 1.0, 0.01)
+                  .onChange(onChangeMorph);
+              } else {
+                morphs
+                  .add(controls, key, 0.0, 1.0, 0.01)
+                  .onChange(onChangeMorph);
+              }
+              previousKey = key;
+              previousMorph = morphKey;
             }
+
             i++;
           }
         }
 
         function onChangeMorph() {
-          //此程式只有eye_happy_wink_left能控制
-          const key = keys[14];
-          const value = controls[key];
-          mesh.morphTargetInfluences[0] = value;
+          const modelParameters = dataJson['modellist'][modelFileNum];
+          let previousKey = '',
+            previousMorph;
+          for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const morphKey = dataJson['modellist'][modelFileNum][key];
+            const value = controls[key];
+            if (!(key.search('right') && previousMorph === morphKey)) {
+              mesh.morphTargetInfluences[morphKey] = value;
+            }
+            previousKey = key;
+            previousMorph = morphKey;
+
+            //不是morph
+            if (nonMorph.find(v => v === key)) {
+              if (key === 'head_x') {
+                mesh.skeleton.bones[head_index].rotation.x =
+                  ((30 * ((value - 0) / 1) - 15) * Math.PI) / 180;
+              } else if (key === 'head_y') {
+                mesh.skeleton.bones[head_index].rotation.y =
+                  ((30 * ((value - 0) / 1) - 15) * Math.PI) / 180;
+              } else if (key === 'head_z') {
+                mesh.skeleton.bones[head_index].rotation.z =
+                  ((30 * ((value - 0) / 1) - 15) * Math.PI) / 180;
+              } else if (key === 'iris_rotation_x') {
+                mesh.skeleton.bones[leye_index].rotation.x =
+                  (((modelParameters['LXPA'] - modelParameters['LXNA']) *
+                    ((value - 0) / 1) +
+                    modelParameters['LXNA']) *
+                    Math.PI) /
+                  180;
+                mesh.skeleton.bones[reye_index].rotation.x =
+                  (((modelParameters['RXPA'] - modelParameters['RXNA']) *
+                    ((value - 0) / 1) +
+                    modelParameters['RXNA']) *
+                    Math.PI) /
+                  180;
+              } else if (key === 'iris_rotation_y') {
+                mesh.skeleton.bones[leye_index].rotation.y =
+                  (((modelParameters['LYPA'] - modelParameters['LYNA']) *
+                    ((value - 0) / 1) +
+                    modelParameters['LYNA']) *
+                    Math.PI) /
+                  180;
+                mesh.skeleton.bones[reye_index].rotation.y =
+                  (((modelParameters['RYPA'] - modelParameters['RYNA']) *
+                    ((value - 0) / 1) +
+                    modelParameters['RYNA']) *
+                    Math.PI) /
+                  180;
+              }
+            }
+          }
         }
 
         initControls();
